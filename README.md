@@ -1,2 +1,2 @@
 # binance-orderbook
-Visualize binance order book data fetched from API
+📉📈 Visualize binance order book data fetched from API
