@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Binance BTC/USDT Perpental Order Book</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        background-color: #1e1e1e;
+        color: #cccccc;
+        font-family: Arial, sans-serif;
+      }
+      h3 {
+        color: #cccccc;
+        margin: 0 0 20px 0;
+        text-align: center;
+      }
+      .chart-container {
+        position: relative;
+        margin: auto;
+        width: 80vw;
+        height: 80vh;
+        min-width: 80vw;
+        min-height: 80vw;
+      }
+      canvas {
+        background-color: #2e2e2e;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Binance BTC/USDT Perpental Order Book</h3>
+    <div class="chart-container">
+      <canvas id="orderBookChart"></canvas>
+    </div>
+
+    <script>
+      const bids = [
+        [87, 1],
+        [86, 2],
+        [85, 3],
+        [82.3, 4],
+        [82.2, 4],
+        [82, 4.5],
+        [80.2, 5],
+        [80.1, 7],
+      ];
+      const asks = [
+        [91, 1],
+        [92, 1],
+        [92.1, 2],
+        [93, 2],
+        [94, 3],
+        [95, 5.3241],
+        [96, 6],
+        [97, 8],
+        [98, 8],
+      ];
+
+      // Calculate cumulative sizes
+      function calculateCumulative(array) {
+        let sum = 0;
+        return array.map((value) => (sum += value));
+      }
+
+      const bidPrices = bids.map((bid) => bid[0]);
+      const bidSizes = calculateCumulative(bids.map((bid) => bid[1]));
+      const askPrices = asks.map((ask) => ask[0]).reverse();
+      const askSizes = calculateCumulative(asks.map((ask) => ask[1])).reverse();
+
+      const ctx = document.getElementById("orderBookChart").getContext("2d");
+      const orderBookChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: [...askPrices, ...bidPrices], // asks first for them to appear at the top
+          datasets: [
+            {
+              label: "Asks",
+              data: [...askSizes, ...new Array(bids.length).fill(0)],
+              backgroundColor: "rgba(255, 0, 0, 0.5)",
+            },
+            {
+              label: "Bids",
+              data: [...new Array(asks.length).fill(0), ...bidSizes],
+              backgroundColor: "rgba(0, 255, 0, 0.5)",
+            },
+          ],
+        },
+        options: {
+          indexAxis: "y",
+          scales: {
+            x: {
+              stacked: true,
+              title: {
+                display: true,
+                text: "Total Size",
+                color: "#CCCCCC",
+              },
+            },
+            y: {
+              beginAtZero: true,
+              stacked: true,
+              title: {
+                display: true,
+                text: "Price",
+                color: "#CCCCCC",
+              },
+            },
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: "#CCCCCC", // Ensures the legend is visible against a dark background
+              },
+            },
+          },
+        },
+      });
+    </script>
+  </body>
+</html>
