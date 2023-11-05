@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Binance BTC/USDT Perpental Order Book</title>
+    <title>Binance BTC/USDT Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       body {
         background-color: #1e1e1e;
-        color: #cccccc;
+        color: #ffffff;
         font-family: Arial, sans-serif;
       }
       h3 {
-        color: #cccccc;
+        color: #ffffff;
         margin: 0 0 20px 0;
         text-align: center;
       }
@@ -20,9 +20,6 @@
         position: relative;
         margin: auto;
         width: 80vw;
-        height: 80vh;
-        min-width: 80vw;
-        min-height: 80vw;
       }
       canvas {
         background-color: #2e2e2e;
@@ -35,54 +32,29 @@
       <canvas id="orderBookChart"></canvas>
     </div>
 
-    <script>
-      const bids = [
-        [87, 1],
-        [86, 2],
-        [85, 3],
-        [82.3, 4],
-        [82.2, 4],
-        [82, 4.5],
-        [80.2, 5],
-        [80.1, 7],
-      ];
-      const asks = [
-        [91, 1],
-        [92, 1],
-        [92.1, 2],
-        [93, 2],
-        [94, 3],
-        [95, 5.3241],
-        [96, 6],
-        [97, 8],
-        [98, 8],
-      ];
-
-      // Calculate cumulative sizes
-      function calculateCumulative(array) {
-        let sum = 0;
-        return array.map((value) => (sum += value));
-      }
-
-      const bidPrices = bids.map((bid) => bid[0]);
-      const bidSizes = calculateCumulative(bids.map((bid) => bid[1]));
-      const askPrices = asks.map((ask) => ask[0]).reverse();
-      const askSizes = calculateCumulative(asks.map((ask) => ask[1])).reverse();
-
+    <script type="text/javascript">
+      // Binance config
+      const SYMBOL = "btcusdt";
+      // Initial order book data
+      let lastUpdateId = null;
+      let askDict = [];
+      let bidDict = [];
+      const wsDataQueue = [];
+      // Initial chart creation
       const ctx = document.getElementById("orderBookChart").getContext("2d");
       const orderBookChart = new Chart(ctx, {
         type: "bar",
         data: {
-          labels: [...askPrices, ...bidPrices], // asks first for them to appear at the top
+          labels: [],
           datasets: [
             {
               label: "Asks",
-              data: [...askSizes, ...new Array(bids.length).fill(0)],
+              data: [],
               backgroundColor: "rgba(255, 0, 0, 0.5)",
             },
             {
               label: "Bids",
-              data: [...new Array(asks.length).fill(0), ...bidSizes],
+              data: [],
               backgroundColor: "rgba(0, 255, 0, 0.5)",
             },
           ],
@@ -95,7 +67,10 @@
               title: {
                 display: true,
                 text: "Total Size",
-                color: "#CCCCCC",
+                color: "#ffffff",
+              },
+              ticks: {
+                color: "#cccccc",
               },
             },
             y: {
@@ -104,19 +79,157 @@
               title: {
                 display: true,
                 text: "Price",
-                color: "#CCCCCC",
+                color: "#ffffff",
+              },
+              ticks: {
+                color: "#cccccc",
               },
             },
           },
           plugins: {
             legend: {
               labels: {
-                color: "#CCCCCC", // Ensures the legend is visible against a dark background
+                color: "#ffffff", // Ensures the legend is visible against a dark background
               },
             },
           },
         },
       });
+
+      function calculateCumulative(array) {
+        let sum = 0;
+        return array.map((value) => (sum += value));
+      }
+
+      function updateChart() {
+        // Convert dict to list
+        const bids = Array.from(bidDict.entries())
+          .sort((a, b) => parseFloat(b[0]) - parseFloat(a[0]))
+          .map((item) => [parseFloat(item[0]), item[1]]);
+
+        const asks = Array.from(askDict.entries())
+          .sort((a, b) => parseFloat(a[0]) - parseFloat(b[0]))
+          .map((item) => [parseFloat(item[0]), item[1]]);
+
+        // Calculate cumulative sizes
+        const bidPrices = bids.map((bid) => bid[0]);
+        const bidSizes = calculateCumulative(bids.map((bid) => bid[1]));
+        const askPrices = asks.map((ask) => ask[0]).reverse();
+        const askSizes = calculateCumulative(
+          asks.map((ask) => ask[1])
+        ).reverse();
+
+        // Update the chart data
+        orderBookChart.data.labels = [...askPrices, ...bidPrices];
+        orderBookChart.data.datasets[0].data = [
+          ...askSizes,
+          ...new Array(bids.length).fill(0),
+        ];
+        orderBookChart.data.datasets[1].data = [
+          ...new Array(asks.length).fill(0),
+          ...bidSizes,
+        ];
+
+        // Refresh the chart
+        orderBookChart.update();
+      }
+
+      function mergeData(wsData) {
+        // Iterate through each item in data list
+        for (let i = 0; i < wsData["a"].length; i++) {
+          const price = wsData["a"][i][0];
+          const volume = parseFloat(wsData["a"][i][1]);
+          if (askDict.has(price)) {
+            if (volume > 0.0) {
+              // update volume
+              askDict.set(price, volume);
+            } else {
+              // remove price level
+              askDict.delete(price);
+            }
+          } else if (volume > 0.0) {
+            // insert volume
+            askDict.set(price, volume);
+          }
+        }
+        for (let i = 0; i < wsData["b"].length; i++) {
+          const price = wsData["b"][i][0];
+          const volume = parseFloat(wsData["b"][i][1]);
+          if (bidDict.has(price)) {
+            if (volume > 0.0) {
+              // update volume
+              bidDict.set(price, volume);
+            } else {
+              // remove price level
+              bidDict.delete(price);
+            }
+          } else if (volume > 0.0) {
+            // insert volume
+            bidDict.set(price, volume);
+          }
+        }
+      }
+
+      function initWebsocket() {
+        const ws = new WebSocket("wss://fstream.binance.com/ws");
+        const subscribe = {
+          method: "SUBSCRIBE",
+          params: [SYMBOL + "@depth@500ms"],
+          id: 1,
+        };
+        ws.onopen = function () {
+          ws.send(JSON.stringify(subscribe));
+        };
+        ws.onmessage = function (evt) {
+          const response = JSON.parse(evt.data);
+          if (response.e == "depthUpdate") {
+            wsDataQueue.push(response);
+          }
+          if (lastUpdateId) {
+            while (wsDataQueue.length > 0) {
+              const wsData = wsDataQueue.shift();
+              if (lastUpdateId < wsData["u"]) {
+                mergeData(wsData);
+                updateChart();
+                // update lastUpdateId
+                lastUpdateId = wsData["u"];
+              }
+            }
+          }
+        };
+        ws.onclose = function () {
+          console.log("Websocket connection closed");
+        };
+      }
+
+      async function initData() {
+        try {
+          const response = await fetch(
+            "https://fapi.binance.com/fapi/v1/depth?symbol=" +
+              SYMBOL +
+              "&limit=1000"
+          );
+          const data = await response.json();
+          // Update Id
+          lastUpdateId = data["lastUpdateId"];
+          // Update ask, bid dict
+          askDict = new Map(
+            data["asks"].map((item) => [item[0], parseFloat(item[1])])
+          );
+          bidDict = new Map(
+            data["bids"].map((item) => [item[0], parseFloat(item[1])])
+          );
+          // Update chart
+          updateChart();
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      }
+
+      // Init websocket
+      initWebsocket();
+      // Init fetch data
+      setTimeout(initData, 2500);
     </script>
   </body>
 </html>
