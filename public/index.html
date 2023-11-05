@@ -229,7 +229,7 @@
         };
       }
 
-      async function initData() {
+      async function initData(updateId) {
         try {
           const response = await fetch(
             config.depthUrl +
@@ -240,7 +240,9 @@
           );
           const data = await response.json();
           // Update Id
-          lastUpdateId = data["lastUpdateId"];
+          if (updateId) {
+            lastUpdateId = data["lastUpdateId"];
+          }
           // Update ask, bid dict
           askDict = new Map(
             data["asks"].map((item) => [item[0], parseFloat(item[1])])
@@ -255,10 +257,14 @@
         }
       }
 
-      // Init websocket
+      // Fetch data for initial render
+      initData(false);
+      // Subscribe websocket channel
       initWebsocket();
-      // Init fetch data
-      setTimeout(initData, 2500);
+      // Fetch data for websocket update
+      setTimeout(function () {
+        initData(true);
+      }, 2500);
     </script>
   </body>
 </html>
