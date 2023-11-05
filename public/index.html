@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Binance BTC/USDT Order Book</title>
+    <title>Binance Order Book</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
       body {
@@ -27,14 +27,30 @@
     </style>
   </head>
   <body>
-    <h3>Binance BTC/USDT Perpental Order Book</h3>
+    <h3>Binance Order Book</h3>
     <div class="chart-container">
       <canvas id="orderBookChart"></canvas>
     </div>
 
     <script type="text/javascript">
       // Binance config
-      const SYMBOL = "btcusdt";
+      /*
+      const config = {
+        symbol: "btcusdt",
+        depthUrl: "https://fapi.binance.com/fapi/v1/depth",
+        depthLimit: "1000",
+        wsAddress: "wss://fstream.binance.com/ws",
+        wsSpeed: "500ms",
+      }
+      */
+      // Binance.US config
+      const config = {
+        symbol: "btcusdt",
+        depthUrl: "https://api.binance.us/api/v3/depth",
+        depthLimit: "1000",
+        wsAddress: "wss://stream.binance.us:9443/ws",
+        wsSpeed: "1000ms",
+      };
       // Initial order book data
       let lastUpdateId = null;
       let askDict = [];
@@ -88,6 +104,17 @@
           },
           plugins: {
             legend: {
+              title: {
+                display: true,
+                text: config.symbol.toUpperCase(),
+                color: "#ffffff",
+                padding: {
+                  top: 15,
+                },
+                font: {
+                  size: 18,
+                },
+              },
               labels: {
                 color: "#ffffff", // Ensures the legend is visible against a dark background
               },
@@ -171,10 +198,10 @@
       }
 
       function initWebsocket() {
-        const ws = new WebSocket("wss://fstream.binance.com/ws");
+        const ws = new WebSocket(config.wsAddress);
         const subscribe = {
           method: "SUBSCRIBE",
-          params: [SYMBOL + "@depth@500ms"],
+          params: [config.symbol + "@depth@" + config.wsSpeed],
           id: 1,
         };
         ws.onopen = function () {
@@ -205,9 +232,11 @@
       async function initData() {
         try {
           const response = await fetch(
-            "https://fapi.binance.com/fapi/v1/depth?symbol=" +
-              SYMBOL +
-              "&limit=1000"
+            config.depthUrl +
+              "?symbol=" +
+              config.symbol.toUpperCase() +
+              "&limit=" +
+              config.depthLimit
           );
           const data = await response.json();
           // Update Id
