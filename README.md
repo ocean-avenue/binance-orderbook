@@ -1,5 +1,5 @@
 # binance-orderbook
-📉📈 Visualize binance order book data fetched from API
+📊 Visualize binance order book data fetched from API
 
 Should support `binance`, `binance.future` and `binance.us`, config sample:
 ```
@@ -12,4 +12,4 @@ const config = {
 }
 ```
 
-See demoe here: https://binance-orderbook.web.app/
+See demo here: https://binance-orderbook.web.app/
